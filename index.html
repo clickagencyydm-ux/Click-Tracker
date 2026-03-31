@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Tracker — Click AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #0a0a0a;
+    --gray: #1a1a1a;
+    --gray2: #242424;
+    --border: rgba(255,255,255,0.08);
+    --accent: #7c3aed;
+    --accent2: #a855f7;
+    --blue: #4d9fff;
+    --purple: #a855f7;
+    --white: #f0ede8;
+    --muted: #666;
+    --green: #00c864;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { background:var(--black); color:var(--white); font-family:'DM Sans',sans-serif; font-size:14px; min-height:100vh; padding-bottom:100px; }
+
+  .header { background:rgba(10,10,10,0.98); border-bottom:1px solid var(--border); padding:1rem 1.25rem 0.75rem; position:sticky; top:0; z-index:50; backdrop-filter:blur(12px); }
+  .header-top { display:flex; justify-content:space-between; align-items:center; }
+  .logo { font-family:'Syne',sans-serif; font-weight:800; font-size:1rem; letter-spacing:0.05em; }
+  .logo span { color:var(--accent); }
+  .date-badge { font-family:'DM Mono',monospace; font-size:0.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; }
+
+  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:0.5rem; padding:0.75rem 1.25rem; border-bottom:1px solid var(--border); background:var(--gray); }
+  .stat { text-align:center; }
+  .stat-n { font-family:'Syne',sans-serif; font-weight:800; font-size:1.4rem; line-height:1; color:var(--accent); }
+  .stat-l { font-family:'DM Mono',monospace; font-size:0.5rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-top:0.2rem; }
+
+  .tabs { display:flex; border-bottom:1px solid var(--border); overflow-x:auto; scrollbar-width:none; background:var(--gray); }
+  .tabs::-webkit-scrollbar { display:none; }
+  .tab { font-family:'DM Mono',monospace; font-size:0.62rem; text-transform:uppercase; letter-spacing:0.08em; padding:0.65rem 1rem; color:var(--muted); cursor:pointer; white-space:nowrap; border-bottom:2px solid transparent; transition:all 0.15s; flex-shrink:0; }
+  .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+  .add-btn { position:fixed; bottom:1.5rem; right:1.25rem; background:var(--accent); color:#fff; width:56px; height:56px; border-radius:50%; border:none; font-size:1.6rem; cursor:pointer; z-index:40; box-shadow:0 4px 20px rgba(124,58,237,0.5); display:flex; align-items:center; justify-content:center; transition:transform 0.15s; }
+  .add-btn:active { transform:scale(0.92); }
+
+  .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:60; align-items:flex-end; }
+  .modal-bg.open { display:flex; }
+  .modal { background:var(--gray); border-radius:1.25rem 1.25rem 0 0; padding:1.5rem 1.25rem 2rem; width:100%; max-height:92vh; overflow-y:auto; border-top:1px solid var(--border); }
+  .modal-handle { width:36px; height:4px; background:var(--border); border-radius:2px; margin:0 auto 1.25rem; }
+  .modal-title { font-family:'Syne',sans-serif; font-weight:700; font-size:1.1rem; margin-bottom:1.25rem; }
+
+  .field { margin-bottom:1rem; }
+  .field label { font-family:'DM Mono',monospace; font-size:0.6rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); display:block; margin-bottom:0.4rem; }
+  .field input, .field select, .field textarea { width:100%; background:var(--gray2); border:1px solid var(--border); border-radius:0.6rem; padding:0.75rem 1rem; color:var(--white); font-family:'DM Sans',sans-serif; font-size:0.9rem; outline:none; transition:border-color 0.15s; -webkit-appearance:none; }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color:rgba(124,58,237,0.5); }
+  .field textarea { resize:none; height:75px; }
+  .field select option { background:#1a1a1a; }
+
+  .modal-actions { display:flex; gap:0.75rem; margin-top:1.25rem; }
+  .btn-save { flex:1; background:var(--accent); color:#fff; border:none; border-radius:0.75rem; padding:0.85rem; font-family:'Syne',sans-serif; font-weight:700; font-size:0.9rem; cursor:pointer; transition:opacity 0.15s; }
+  .btn-save:active { opacity:0.85; }
+  .btn-cancel { background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:0.75rem; padding:0.85rem 1.25rem; font-family:'DM Sans',sans-serif; font-size:0.85rem; cursor:pointer; }
+
+  /* AI SECTION */
+  .ai-section { background:rgba(124,58,237,0.07); border:1px solid rgba(124,58,237,0.25); border-radius:0.85rem; padding:1rem; margin-bottom:1rem; }
+  .ai-section-title { font-family:'Syne',sans-serif; font-weight:700; font-size:0.85rem; color:var(--accent2); margin-bottom:0.75rem; }
+  .btn-analyze { width:100%; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; border:none; border-radius:0.65rem; padding:0.75rem; font-family:'Syne',sans-serif; font-weight:700; font-size:0.85rem; cursor:pointer; margin-top:0.75rem; display:flex; align-items:center; justify-content:center; gap:0.5rem; transition:opacity 0.15s; }
+  .btn-analyze:disabled { opacity:0.5; cursor:not-allowed; }
+  .ai-result { display:none; margin-top:0.85rem; background:var(--gray2); border:1px solid rgba(124,58,237,0.2); border-radius:0.65rem; padding:1rem; }
+  .ai-result.visible { display:block; }
+  .ai-tag { font-family:'DM Mono',monospace; font-size:0.58rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--accent2); margin-bottom:0.3rem; margin-top:0.65rem; }
+  .ai-tag:first-child { margin-top:0; }
+  .ai-value { font-size:0.85rem; color:var(--white); line-height:1.5; }
+  .ai-msg-box { background:rgba(124,58,237,0.08); border:1px solid rgba(124,58,237,0.2); border-radius:0.5rem; padding:0.75rem; font-size:0.82rem; color:var(--white); line-height:1.6; margin-top:0.35rem; font-style:italic; white-space:pre-wrap; }
+  .btn-copy-msg { width:100%; background:transparent; border:1px solid rgba(124,58,237,0.35); color:var(--accent2); border-radius:0.5rem; padding:0.55rem; font-family:'DM Mono',monospace; font-size:0.62rem; text-transform:uppercase; letter-spacing:0.08em; cursor:pointer; margin-top:0.5rem; }
+  .btn-use-analysis { width:100%; background:var(--accent); color:#fff; border:none; border-radius:0.5rem; padding:0.6rem; font-family:'Syne',sans-serif; font-weight:700; font-size:0.8rem; cursor:pointer; margin-top:0.4rem; }
+
+  .loading-dots { display:inline-flex; gap:4px; align-items:center; }
+  .loading-dots span { width:6px; height:6px; background:#fff; border-radius:50%; animation:bounce 1.2s infinite; }
+  .loading-dots span:nth-child(2) { animation-delay:0.2s; }
+  .loading-dots span:nth-child(3) { animation-delay:0.4s; }
+  @keyframes bounce { 0%,80%,100%{transform:scale(0.7);opacity:0.5} 40%{transform:scale(1);opacity:1} }
+
+  .list { padding:0.75rem 1.25rem; }
+  .empty-state { text-align:center; padding:3rem 1rem; color:var(--muted); }
+  .empty-icon { font-size:2.5rem; margin-bottom:0.75rem; }
+  .empty-text { font-size:0.85rem; line-height:1.6; }
+
+  .prospect-card { background:var(--gray); border:1px solid var(--border); border-radius:0.85rem; padding:1rem 1.1rem; margin-bottom:0.65rem; cursor:pointer; transition:border-color 0.15s; }
+  .prospect-card:active { border-color:rgba(124,58,237,0.4); }
+  .card-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem; }
+  .card-name { font-family:'Syne',sans-serif; font-weight:700; font-size:0.95rem; }
+  .card-right { display:flex; gap:0.4rem; align-items:center; flex-shrink:0; }
+  .status-pill { font-family:'DM Mono',monospace; font-size:0.55rem; text-transform:uppercase; letter-spacing:0.08em; padding:0.2rem 0.6rem; border-radius:2rem; }
+  .s-enviado    { background:rgba(102,102,102,0.2); color:#888; border:1px solid rgba(102,102,102,0.3); }
+  .s-respondio  { background:rgba(77,159,255,0.15); color:var(--blue); border:1px solid rgba(77,159,255,0.3); }
+  .s-diagnostico{ background:rgba(168,85,247,0.15); color:var(--purple); border:1px solid rgba(168,85,247,0.3); }
+  .s-oferta     { background:rgba(255,165,0,0.15); color:orange; border:1px solid rgba(255,165,0,0.3); }
+  .s-cierre     { background:rgba(124,58,237,0.15); color:var(--accent); border:1px solid rgba(124,58,237,0.35); }
+  .s-cerrado    { background:rgba(0,200,100,0.15); color:var(--green); border:1px solid rgba(0,200,100,0.3); }
+  .s-frio       { background:rgba(255,77,0,0.1); color:#ff4d00; border:1px solid rgba(255,77,0,0.2); }
+  .ai-badge { font-family:'DM Mono',monospace; font-size:0.52rem; text-transform:uppercase; color:var(--accent2); background:rgba(168,85,247,0.1); border:1px solid rgba(168,85,247,0.2); padding:0.15rem 0.5rem; border-radius:2rem; }
+  .card-meta { display:flex; gap:0.75rem; flex-wrap:wrap; }
+  .meta-item { font-family:'DM Mono',monospace; font-size:0.6rem; color:var(--muted); }
+  .card-note { font-size:0.78rem; color:var(--muted); margin-top:0.5rem; line-height:1.5; border-top:1px solid var(--border); padding-top:0.5rem; white-space:pre-wrap; }
+
+  .detail-status-row { display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1rem; }
+  .status-opt { font-family:'DM Mono',monospace; font-size:0.6rem; text-transform:uppercase; letter-spacing:0.07em; padding:0.35rem 0.75rem; border-radius:2rem; border:1px solid var(--border); color:var(--muted); cursor:pointer; transition:all 0.15s; }
+  .status-opt.selected { color:#fff; background:var(--accent); border-color:var(--accent); }
+  .btn-delete { width:100%; background:transparent; border:1px solid rgba(255,77,0,0.3); color:#ff4d00; border-radius:0.75rem; padding:0.75rem; font-family:'DM Sans',sans-serif; font-size:0.85rem; cursor:pointer; margin-top:0.75rem; }
+  .search-bar { padding:0.75rem 1.25rem 0; }
+  .search-bar input { width:100%; background:var(--gray); border:1px solid var(--border); border-radius:0.75rem; padding:0.65rem 1rem; color:var(--white); font-family:'DM Sans',sans-serif; font-size:0.85rem; outline:none; }
+  .section-day { font-family:'DM Mono',monospace; font-size:0.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; padding:0.75rem 0 0.35rem; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="logo">CLICK <span>AI</span> — Tracker</div>
+    <div class="date-badge" id="dateLabel"></div>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-n" id="statTotal">0</div><div class="stat-l">Total</div></div>
+  <div class="stat"><div class="stat-n" id="statHoy">0</div><div class="stat-l">Hoy</div></div>
+  <div class="stat"><div class="stat-n" id="statActivos">0</div><div class="stat-l">Activos</div></div>
+  <div class="stat"><div class="stat-n" id="statCerrados">0</div><div class="stat-l">Cerrados</div></div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="setTab('todos',this)">Todos</div>
+  <div class="tab" onclick="setTab('enviado',this)">Enviado</div>
+  <div class="tab" onclick="setTab('respondio',this)">Respondió</div>
+  <div class="tab" onclick="setTab('diagnostico',this)">Diagnóstico</div>
+  <div class="tab" onclick="setTab('oferta',this)">Oferta</div>
+  <div class="tab" onclick="setTab('cierre',this)">Cierre</div>
+  <div class="tab" onclick="setTab('cerrado',this)">✅ Cerrado</div>
+  <div class="tab" onclick="setTab('frio',this)">❄️ Frío</div>
+</div>
+
+<div class="search-bar">
+  <input type="text" placeholder="Buscar prospecto..." oninput="renderList()" id="searchInput">
+</div>
+<div class="list" id="prospectList"></div>
+<button class="add-btn" onclick="openAddModal()">+</button>
+
+<!-- ADD MODAL -->
+<div class="modal-bg" id="addModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Nuevo prospecto</div>
+
+    <div class="field">
+      <label>Link del perfil de Instagram</label>
+      <input type="url" id="f-link" placeholder="https://instagram.com/nombreusuario" oninput="autoFillUser()">
+    </div>
+    <div class="field">
+      <label>Usuario de Instagram (@)</label>
+      <input type="text" id="f-user" placeholder="Se completa automático con el link">
+    </div>
+    <div class="field">
+      <label>Nombre (opcional)</label>
+      <input type="text" id="f-name" placeholder="Nombre del coach">
+    </div>
+    <div class="field">
+      <label>Cuenta usada para contactar</label>
+      <input type="text" id="f-cuenta" placeholder="@tucuenta o nombre del avatar">
+    </div>
+    <div class="field">
+      <label>Estado</label>
+      <select id="f-status">
+        <option value="enviado">DM Enviado</option>
+        <option value="respondio">Respondió</option>
+        <option value="diagnostico">En Diagnóstico</option>
+        <option value="oferta">Oferta Presentada</option>
+        <option value="cierre">En Cierre</option>
+        <option value="cerrado">✅ Cerrado</option>
+        <option value="frio">❄️ Frío</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Variante de mensaje usada</label>
+      <select id="f-variante">
+        <option value="">— Sin especificar —</option>
+        <option value="Variante A (dolor)">Variante A — Dolor</option>
+        <option value="Variante B (curiosidad)">Variante B — Curiosidad</option>
+        <option value="Variante C (directa)">Variante C — Directa</option>
+        <option value="English A">English — Pain hook</option>
+        <option value="English B">English — Curiosity</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Nota manual (opcional)</label>
+      <textarea id="f-note" placeholder="Ej: coach de vida, 20K seg, no hace seguimiento..."></textarea>
+    </div>
+
+    <!-- AI ANALYZER -->
+    <div class="ai-section">
+      <div class="ai-section-title">🤖 Analizador IA — Diagnóstico de perfil</div>
+      <div class="field" style="margin-bottom:0.75rem">
+        <label>Bio del perfil (copiá y pegá desde Instagram)</label>
+        <textarea id="f-bio" placeholder="Ej: Coach de ventas | 500+ alumnos | Ayudo emprendedores a cerrar más sin llamadas frías"></textarea>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>Último post o descripción reciente</label>
+        <textarea id="f-post" placeholder="Ej: '3 razones por las que tus leads no compran (y cómo arreglarlo)'"></textarea>
+      </div>
+      <button class="btn-analyze" id="analyzeBtn" onclick="analyzeProfile()">
+        <span id="analyzeBtnText">✨ Analizar perfil con IA</span>
+      </button>
+      <div class="ai-result" id="aiResult">
+        <div class="ai-tag">🎯 Nicho detectado</div>
+        <div class="ai-value" id="r-nicho">—</div>
+        <div class="ai-tag">😣 Dolor principal</div>
+        <div class="ai-value" id="r-dolor">—</div>
+        <div class="ai-tag">📊 Nivel de oportunidad</div>
+        <div class="ai-value" id="r-oportunidad">—</div>
+        <div class="ai-tag">✉️ Variante recomendada</div>
+        <div class="ai-value" id="r-variante">—</div>
+        <div class="ai-tag">💬 Primer mensaje personalizado</div>
+        <div class="ai-msg-box" id="r-mensaje">—</div>
+        <button class="btn-copy-msg" onclick="copyMsg()">📋 Copiar mensaje</button>
+        <button class="btn-use-analysis" onclick="useAnalysis()">✅ Usar este análisis</button>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('addModal')">Cancelar</button>
+      <button class="btn-save" onclick="saveProspect()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-bg" id="detailModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="d-title">Prospecto</div>
+    <div class="field">
+      <label>Cambiar estado</label>
+      <div class="detail-status-row" id="d-statusRow"></div>
+    </div>
+    <div class="field">
+      <label>Link del perfil</label>
+      <input type="url" id="d-link">
+    </div>
+    <div class="field">
+      <label>Cuenta usada</label>
+      <input type="text" id="d-cuenta">
+    </div>
+    <div class="field">
+      <label>Variante usada</label>
+      <select id="d-variante">
+        <option value="">— Sin especificar —</option>
+        <option value="Variante A (dolor)">Variante A — Dolor</option>
+        <option value="Variante B (curiosidad)">Variante B — Curiosidad</option>
+        <option value="Variante C (directa)">Variante C — Directa</option>
+        <option value="English A">English — Pain hook</option>
+        <option value="English B">English — Curiosity</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Nota / diagnóstico</label>
+      <textarea id="d-note"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('detailModal')">Cancelar</button>
+      <button class="btn-save" onclick="updateProspect()">Actualizar</button>
+    </div>
+    <button class="btn-delete" onclick="deleteProspect()">Eliminar prospecto</button>
+  </div>
+</div>
+
+<script>
+  const STATUSES = [
+    { key:'enviado',     label:'DM Enviado',   cls:'s-enviado' },
+    { key:'respondio',   label:'Respondió',     cls:'s-respondio' },
+    { key:'diagnostico', label:'Diagnóstico',   cls:'s-diagnostico' },
+    { key:'oferta',      label:'Oferta',        cls:'s-oferta' },
+    { key:'cierre',      label:'Cierre',        cls:'s-cierre' },
+    { key:'cerrado',     label:'✅ Cerrado',    cls:'s-cerrado' },
+    { key:'frio',        label:'❄️ Frío',      cls:'s-frio' },
+  ];
+
+  let prospects = JSON.parse(localStorage.getItem('clickai_prospects') || '[]');
+  let currentTab = 'todos';
+  let editingId = null;
+  let lastAnalysis = null;
+
+  function save() { localStorage.setItem('clickai_prospects', JSON.stringify(prospects)); }
+  function today() { return new Date().toISOString().split('T')[0]; }
+  function formatDate(iso) { return new Date(iso).toLocaleDateString('es-AR',{day:'numeric',month:'short'}); }
+
+  function autoFillUser() {
+    const link = document.getElementById('f-link').value.trim();
+    const match = link.match(/instagram\.com\/([^\/?#\s]+)/i);
+    if (match && match[1]) document.getElementById('f-user').value = '@' + match[1].replace(/\/$/,'');
+  }
+
+  function setTab(tab, el) {
+    currentTab = tab;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    renderList();
+  }
+
+  function updateStats() {
+    const t = today();
+    document.getElementById('statTotal').textContent = prospects.length;
+    document.getElementById('statHoy').textContent = prospects.filter(p => p.date===t).length;
+    document.getElementById('statActivos').textContent = prospects.filter(p => !['cerrado','frio'].includes(p.status)).length;
+    document.getElementById('statCerrados').textContent = prospects.filter(p => p.status==='cerrado').length;
+    const now = new Date();
+    document.getElementById('dateLabel').textContent = now.toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
+  }
+
+  function statusInfo(key) { return STATUSES.find(s => s.key===key) || STATUSES[0]; }
+
+  function renderList() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    let filtered = prospects.filter(p => {
+      const matchTab = currentTab==='todos' || p.status===currentTab;
+      const matchSearch = !search || (p.user||'').toLowerCase().includes(search) || (p.name||'').toLowerCase().includes(search) || (p.note||'').toLowerCase().includes(search) || (p.cuenta||'').toLowerCase().includes(search);
+      return matchTab && matchSearch;
+    }).sort((a,b) => new Date(b.date)-new Date(a.date));
+
+    const el = document.getElementById('prospectList');
+    if (!filtered.length) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">No hay prospectos aquí todavía.<br>Tocá <strong style="color:var(--accent)">+</strong> para agregar uno.</div></div>`;
+      return;
+    }
+
+    const groups = {};
+    filtered.forEach(p => { if (!groups[p.date]) groups[p.date]=[]; groups[p.date].push(p); });
+
+    let html = '';
+    Object.keys(groups).sort((a,b) => new Date(b)-new Date(a)).forEach(date => {
+      const label = date===today() ? 'Hoy' : formatDate(date);
+      html += `<div class="section-day">${label} · ${groups[date].length} prospectos</div>`;
+      groups[date].forEach(p => {
+        const st = statusInfo(p.status);
+        html += `<div class="prospect-card" onclick="openDetail('${p.id}')">
+          <div class="card-top">
+            <div class="card-name">${p.user||p.name||'Sin nombre'}</div>
+            <div class="card-right">
+              ${p.hasAI ? '<span class="ai-badge">🤖 IA</span>' : ''}
+              <div class="status-pill ${st.cls}">${st.label}</div>
+            </div>
+          </div>
+          <div class="card-meta">
+            ${p.cuenta ? `<div class="meta-item">📱 ${p.cuenta}</div>` : ''}
+            ${p.variante ? `<div class="meta-item">✉️ ${p.variante}</div>` : ''}
+            ${p.link ? `<div class="meta-item"><a href="${p.link}" target="_blank" style="color:var(--blue);text-decoration:none">🔗 Ver perfil</a></div>` : ''}
+          </div>
+          ${p.note ? `<div class="card-note">${p.note}</div>` : ''}
+        </div>`;
+      });
+    });
+    el.innerHTML = html;
+  }
+
+  // ── AI ANALYZER ──────────────────────────────────────────
+  async function analyzeProfile() {
+    const bio = document.getElementById('f-bio').value.trim();
+    const post = document.getElementById('f-post').value.trim();
+    const user = document.getElementById('f-user').value.trim();
+
+    if (!bio && !post) { alert('Pegá al menos la bio o el último post para analizar.'); return; }
+
+    const btn = document.getElementById('analyzeBtn');
+    const btnText = document.getElementById('analyzeBtnText');
+    btn.disabled = true;
+    btnText.innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
+
+    const prompt = `Eres el asistente de ventas de Click AI Agency, especializada en automatización con IA para coaches y consultores hispanohablantes e ingleses.
+
+Analiza este perfil de Instagram de un prospecto coach/consultor:
+
+Usuario: ${user || 'No especificado'}
+Bio: ${bio || 'No proporcionada'}
+Último post/contenido: ${post || 'No proporcionado'}
+
+Responde ÚNICAMENTE en este formato JSON exacto, sin texto extra ni markdown:
+{
+  "nicho": "nicho específico del coach en 1 línea",
+  "dolor": "dolor principal detectado en 1-2 líneas enfocado en pérdida de leads o ventas",
+  "oportunidad": "Alta / Media / Baja — 1 frase de justificación",
+  "variante": "cuál de estas variantes usar y por qué: Variante A (dolor) / Variante B (curiosidad) / Variante C (directa) / English A / English B",
+  "mensaje": "primer DM personalizado listo para copiar y pegar, máximo 3 líneas, en el idioma apropiado según el perfil del coach, usando su usuario si está disponible, siguiendo el script de Click AI"
+}`;
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+
+      const data = await response.json();
+      const text = data.content?.map(i => i.text||'').join('') || '';
+      const clean = text.replace(/```json|```/g,'').trim();
+      const parsed = JSON.parse(clean);
+
+      document.getElementById('r-nicho').textContent = parsed.nicho || '—';
+      document.getElementById('r-dolor').textContent = parsed.dolor || '—';
+      document.getElementById('r-oportunidad').textContent = parsed.oportunidad || '—';
+      document.getElementById('r-variante').textContent = parsed.variante || '—';
+      document.getElementById('r-mensaje').textContent = parsed.mensaje || '—';
+
+      lastAnalysis = parsed;
+      document.getElementById('aiResult').classList.add('visible');
+    } catch(err) {
+      alert('Error al analizar. Verificá tu conexión e intentá de nuevo.');
+      console.error(err);
+    } finally {
+      btn.disabled = false;
+      btnText.innerHTML = '✨ Analizar perfil con IA';
+    }
+  }
+
+  function copyMsg() {
+    const msg = document.getElementById('r-mensaje').textContent;
+    navigator.clipboard.writeText(msg).then(() => {
+      const btn = document.querySelector('.btn-copy-msg');
+      btn.textContent = '✅ ¡Copiado!';
+      setTimeout(() => btn.textContent = '📋 Copiar mensaje', 2000);
+    });
+  }
+
+  function useAnalysis() {
+    if (!lastAnalysis) return;
+    const summary = `🤖 Nicho: ${lastAnalysis.nicho}\n😣 Dolor: ${lastAnalysis.dolor}\n📊 Oportunidad: ${lastAnalysis.oportunidad}`;
+    document.getElementById('f-note').value = summary;
+    const varMap = { 'Variante A':'Variante A (dolor)', 'Variante B':'Variante B (curiosidad)', 'Variante C':'Variante C (directa)', 'English A':'English A', 'English B':'English B' };
+    const varKey = Object.keys(varMap).find(k => lastAnalysis.variante?.includes(k));
+    if (varKey) document.getElementById('f-variante').value = varMap[varKey];
+    const btn = document.querySelector('.btn-use-analysis');
+    btn.textContent = '✅ Análisis cargado';
+    setTimeout(() => btn.textContent = '✅ Usar este análisis', 2000);
+  }
+
+  function openAddModal() {
+    ['f-user','f-name','f-link','f-cuenta','f-bio','f-post','f-note'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('f-status').value = 'enviado';
+    document.getElementById('f-variante').value = '';
+    document.getElementById('aiResult').classList.remove('visible');
+    lastAnalysis = null;
+    document.getElementById('addModal').classList.add('open');
+  }
+
+  function saveProspect() {
+    const user = document.getElementById('f-user').value.trim();
+    const name = document.getElementById('f-name').value.trim();
+    if (!user && !name) { alert('Ingresá el usuario o nombre'); return; }
+    const p = {
+      id: Date.now().toString(),
+      user, name,
+      link: document.getElementById('f-link').value.trim(),
+      cuenta: document.getElementById('f-cuenta').value.trim(),
+      status: document.getElementById('f-status').value,
+      variante: document.getElementById('f-variante').value,
+      note: document.getElementById('f-note').value.trim(),
+      hasAI: !!lastAnalysis,
+      aiData: lastAnalysis || null,
+      date: today(),
+    };
+    prospects.unshift(p);
+    save();
+    closeModal('addModal');
+    updateStats();
+    renderList();
+  }
+
+  function openDetail(id) {
+    const p = prospects.find(x => x.id===id);
+    if (!p) return;
+    editingId = id;
+    document.getElementById('d-title').textContent = p.user || p.name;
+    document.getElementById('d-link').value = p.link || '';
+    document.getElementById('d-cuenta').value = p.cuenta || '';
+    document.getElementById('d-variante').value = p.variante || '';
+    document.getElementById('d-note').value = p.note || '';
+    let shtml = '';
+    STATUSES.forEach(s => { shtml += `<div class="status-opt ${p.status===s.key?'selected':''}" data-key="${s.key}" onclick="selectStatus(this)">${s.label}</div>`; });
+    document.getElementById('d-statusRow').innerHTML = shtml;
+    document.getElementById('detailModal').classList.add('open');
+  }
+
+  function selectStatus(el) {
+    document.querySelectorAll('#d-statusRow .status-opt').forEach(e => e.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+
+  function updateProspect() {
+    const p = prospects.find(x => x.id===editingId);
+    if (!p) return;
+    const sel = document.querySelector('#d-statusRow .status-opt.selected');
+    if (sel) p.status = sel.dataset.key;
+    p.link = document.getElementById('d-link').value.trim();
+    p.cuenta = document.getElementById('d-cuenta').value.trim();
+    p.variante = document.getElementById('d-variante').value;
+    p.note = document.getElementById('d-note').value.trim();
+    save(); closeModal('detailModal'); updateStats(); renderList();
+  }
+
+  function deleteProspect() {
+    if (!confirm('¿Eliminar este prospecto?')) return;
+    prospects = prospects.filter(x => x.id!==editingId);
+    save(); closeModal('detailModal'); updateStats(); renderList();
+  }
+
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  document.querySelectorAll('.modal-bg').forEach(bg => {
+    bg.addEventListener('click', e => { if (e.target===bg) bg.classList.remove('open'); });
+  });
+
+  updateStats();
+  renderList();
+</script>
+</body>
+</html>
